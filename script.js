@@ -14,6 +14,7 @@ const state = {
   resources: { energy: 100, focus: 100, mood: 100 },
   inbox: 6,
   timeline: [],
+  choiceLog: [],
   drivers: { interruptions: 0, workload: 0, anticipation: 0, recovery: 0 },
   archetypeScore: { firefighter: 0, planner: 0, protector: 0, busy: 0, recovery: 0 },
   queue: [],                // scheduled events for this playthrough, sorted by time
@@ -471,6 +472,16 @@ function resolveChoice(ev, choice){
   // archetype scoring
   if (choice.arche) state.archetypeScore[choice.arche] += 1;
 
+  // full record for the end-of-day personalized debrief
+  state.choiceLog.push({
+    time: Math.round(state.time),
+    eventTitle: ev.title,
+    choiceLabel: choice.label,
+    deltas: choice.deltas || {},
+    drivers: choice.drivers || {},
+    arche: choice.arche || null
+  });
+
   // timeline
   logTimeline(Math.round(state.time), `${ev.title} → ${choice.label}`);
 
@@ -542,6 +553,7 @@ function endDay(){
   renderDrivers();
   renderArchetype();
   renderEndTimeline();
+  renderPersonalizedLesson();
 
   showScreen('end');
 }
@@ -600,6 +612,76 @@ function renderArchetype(){
   $('end-archetype-desc').textContent = a.desc;
 }
 
+const DRIVER_PHRASES = {
+  interruptions: 'constant interruptions — pings and asks that pulled you out of whatever you were doing',
+  workload: 'sheer workload — the volume of things that needed handling',
+  anticipation: 'anticipation — bracing for problems before they had even arrived',
+  recovery: 'time spent recovering — breaks and pauses you chose to take'
+};
+
+function renderPersonalizedLesson(){
+  const log = state.choiceLog;
+  const parts = [];
+
+  // biggest single hit to each resource, with the moment and choice that caused it
+  const worst = {};
+  log.forEach(entry => {
+    ['energy','focus','mood'].forEach(r => {
+      const d = entry.deltas[r];
+      if (typeof d === 'number' && d < 0){
+        if (!worst[r] || d < worst[r].delta) worst[r] = { delta: d, ...entry };
+      }
+    });
+  });
+
+  // pick the single worst moment overall (largest negative delta across all resources)
+  let worstOverall = null;
+  Object.entries(worst).forEach(([r, w]) => {
+    if (!worstOverall || w.delta < worstOverall.delta) worstOverall = { resource: r, ...w };
+  });
+
+  if (worstOverall){
+    parts.push(`Your ${worstOverall.resource} took its sharpest single hit at ${formatTime(worstOverall.time)}, during "${worstOverall.eventTitle}" — the moment you chose to "${worstOverall.choiceLabel.toLowerCase()}."`);
+  }
+
+  // a second distinct resource's worst moment, if it was a different event
+  const other = Object.entries(worst).find(([r, w]) => !worstOverall || (r !== worstOverall.resource && w.eventTitle !== worstOverall.eventTitle));
+  if (other){
+    const [r, w] = other;
+    parts.push(`Your ${r} dropped hardest after "${w.eventTitle}," when you chose to "${w.choiceLabel.toLowerCase()}."`);
+  }
+
+  // dominant stress driver
+  const d = state.drivers;
+  const total = Object.values(d).reduce((a,b) => a+b, 0);
+  if (total > 0){
+    const dominant = Object.keys(d).reduce((a,b) => d[a] >= d[b] ? a : b);
+    const pct = Math.round((d[dominant] / total) * 100);
+    if (dominant === 'recovery'){
+      parts.push(`Recovery was the largest single category in your day at ${pct}% — the breaks you took were doing real work, even when they did not feel productive.`);
+    } else {
+      parts.push(`${capitalize(DRIVER_PHRASES[dominant].split(' — ')[0])} was the single largest drain on your budget today, at ${pct}% of everything you spent.`);
+    }
+  }
+
+  // recovery/protective ratio
+  const protectiveCount = log.filter(e => e.arche === 'recovery' || e.arche === 'protector').length;
+  const total_choices = log.length;
+  if (total_choices > 0){
+    if (protectiveCount === 0){
+      parts.push(`Not once today did you choose to protect your focus or step away — every single decision spent from the budget, none of them topped it up.`);
+    } else if (protectiveCount <= 2){
+      parts.push(`Only ${protectiveCount} of your ${total_choices} decisions today were about protecting your focus or recovering — the rest were spent reacting to whatever showed up.`);
+    } else {
+      parts.push(`${protectiveCount} of your ${total_choices} decisions today were about protecting your focus or recovering — a habit that visibly slowed the drain.`);
+    }
+  }
+
+  parts.push('You did not fail because the day became stressful. You struggled because your stress budget was already spent when the unexpected happened. Stress is not something we eliminate. It is something we budget.');
+
+  $('final-lesson').textContent = parts.join(' ');
+}
+
 function renderEndTimeline(){
   const el = $('end-timeline');
   el.innerHTML = '';
@@ -617,7 +699,7 @@ function renderEndTimeline(){
 $('btn-replay').addEventListener('click', () => {
   Object.assign(state, {
     time: 540, resources: { energy:100, focus:100, mood:100 }, inbox: 6,
-    timeline: [], drivers: { interruptions:0, workload:0, anticipation:0, recovery:0 },
+    timeline: [], choiceLog: [], drivers: { interruptions:0, workload:0, anticipation:0, recovery:0 },
     archetypeScore: { firefighter:0, planner:0, protector:0, busy:0, recovery:0 },
     queue: [], delayed: [], setupChoices: {}, playing: false
   });
