@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Monday — A Stress Budget Simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ============ INTRO SCREEN ============ -->
+<section id="screen-intro" class="screen active">
+  <div class="intro-wrap">
+    <p class="eyebrow">A stress budget simulator</p>
+    <h1 class="intro-title">Monday</h1>
+    <p class="intro-sub">You wake up with three resources: <span class="tag-energy">Energy</span>, <span class="tag-focus">Focus</span>, and <span class="tag-mood">Mood</span>. Every choice today spends or restores them. Nothing refills for free.</p>
+    <button class="btn btn-primary" id="btn-start">Begin the day</button>
+    <p class="intro-hint">Takes about 5 minutes. There is no score to chase — only a budget to manage.</p>
+  </div>
+</section>
+
+<!-- ============ SETUP SCREEN ============ -->
+<section id="screen-setup" class="screen">
+  <div class="setup-wrap">
+    <p class="eyebrow">Before 9:00</p>
+    <h2 class="setup-title">How did you start today?</h2>
+
+    <div class="setup-group" data-group="sleep">
+      <p class="setup-label">Sleep</p>
+      <div class="option-row">
+        <button class="option" data-value="low">Under 5 hours</button>
+        <button class="option" data-value="mid">Around 7 hours</button>
+        <button class="option" data-value="high">8+ hours</button>
+      </div>
+    </div>
+
+    <div class="setup-group" data-group="breakfast">
+      <p class="setup-label">Breakfast</p>
+      <div class="option-row">
+        <button class="option" data-value="coffee">Coffee only</button>
+        <button class="option" data-value="light">Light breakfast</button>
+        <button class="option" data-value="full">Full meal</button>
+      </div>
+    </div>
+
+    <div class="setup-group" data-group="commute">
+      <p class="setup-label">Commute</p>
+      <div class="option-row">
+        <button class="option" data-value="traffic">Heavy traffic</button>
+        <button class="option" data-value="normal">Normal</button>
+        <button class="option" data-value="walk">Relaxed walk</button>
+      </div>
+    </div>
+
+    <button class="btn btn-primary" id="btn-enter-office" disabled>Walk into the office</button>
+  </div>
+</section>
+
+<!-- ============ DAY SCREEN ============ -->
+<section id="screen-day" class="screen">
+
+  <header class="topbar">
+    <div class="clock">
+      <span id="clock-time">9:00</span>
+      <span class="clock-label">AM</span>
+    </div>
+    <div class="day-progress">
+      <div class="day-progress-fill" id="day-progress-fill"></div>
+    </div>
+    <div class="inbox-chip">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M3 7l9 6 9-6M3 7v10a2 2 0 002 2h14a2 2 0 002-2V7M3 7a2 2 0 012-2h14a2 2 0 012 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span id="inbox-count">0</span>
+    </div>
+  </header>
+
+  <div class="hud">
+    <div class="meter meter-energy" data-resource="energy">
+      <div class="meter-head"><span>Energy</span><span class="meter-val" id="val-energy">100</span></div>
+      <div class="meter-track"><div class="meter-fill" id="fill-energy"><div class="meter-wave"></div></div></div>
+    </div>
+    <div class="meter meter-focus" data-resource="focus">
+      <div class="meter-head"><span>Focus</span><span class="meter-val" id="val-focus">100</span></div>
+      <div class="meter-track"><div class="meter-fill" id="fill-focus"><div class="meter-wave"></div></div></div>
+    </div>
+    <div class="meter meter-mood" data-resource="mood">
+      <div class="meter-head"><span>Mood</span><span class="meter-val" id="val-mood">100</span></div>
+      <div class="meter-track"><div class="meter-fill" id="fill-mood"><div class="meter-wave"></div></div></div>
+    </div>
+  </div>
+
+  <main class="workspace">
+    <div class="workspace-idle" id="workspace-idle">
+      <div class="idle-orb">
+        <span class="idle-dot"></span>
+        <span class="idle-dot"></span>
+        <span class="idle-dot"></span>
+      </div>
+      <p id="idle-text">The day is quiet for a moment.</p>
+    </div>
+    <div class="event-card" id="event-card">
+      <p class="event-source" id="event-source">Slack</p>
+      <h3 class="event-title" id="event-title"></h3>
+      <p class="event-body" id="event-body"></p>
+      <div class="event-choices" id="event-choices"></div>
+    </div>
+  </main>
+
+  <aside class="feed" id="feed">
+    <p class="feed-label">Timeline</p>
+    <div class="feed-list" id="feed-list"></div>
+  </aside>
+
+  <div class="toast-layer" id="toast-layer"></div>
+</section>
+
+<!-- ============ END SCREEN ============ -->
+<section id="screen-end" class="screen">
+  <div class="end-wrap">
+    <p class="eyebrow">5:30 PM</p>
+    <h2 class="end-title" id="end-archetype">Reactive Firefighter</h2>
+    <p class="end-sub" id="end-archetype-desc"></p>
+
+    <div class="end-meters">
+      <div class="end-meter">
+        <span class="end-meter-label">Energy</span>
+        <div class="meter-track small"><div class="meter-fill" id="end-fill-energy"></div></div>
+        <span class="end-meter-val" id="end-val-energy">0</span>
+      </div>
+      <div class="end-meter">
+        <span class="end-meter-label">Focus</span>
+        <div class="meter-track small"><div class="meter-fill" id="end-fill-focus"></div></div>
+        <span class="end-meter-val" id="end-val-focus">0</span>
+      </div>
+      <div class="end-meter">
+        <span class="end-meter-label">Mood</span>
+        <div class="meter-track small"><div class="meter-fill" id="end-fill-mood"></div></div>
+        <span class="end-meter-val" id="end-val-mood">0</span>
+      </div>
+    </div>
+
+    <div class="drivers">
+      <p class="drivers-label">Where your budget went</p>
+      <div class="drivers-list" id="drivers-list"></div>
+    </div>
+
+    <div class="end-timeline" id="end-timeline"></div>
+
+    <blockquote class="final-lesson">
+      You didn't fail because the day became stressful. You struggled because your stress budget was already spent when the unexpected happened. Stress isn't something we eliminate. It's something we budget.
+    </blockquote>
+
+    <button class="btn btn-secondary" id="btn-replay">Live it again</button>
+  </div>
+</section>
+
+<script src="script.js"></script>
+</body>
+</html>
