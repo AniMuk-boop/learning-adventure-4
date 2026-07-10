@@ -65,7 +65,7 @@ const POOL = [
     choices:[
       { label:'Read everything, top to bottom', deltas:{energy:-10, focus:-10}, drivers:{workload:10}, arche:'busy' },
       { label:'Scan and prioritize the top 5', deltas:{focus:-4}, drivers:{workload:4}, arche:'planner' },
-      { label:'Close the tab, deal with it later', deltas:{mood:+3}, drivers:{workload:2}, arche:'protector', setFlag:'inbox_ignored' }
+      { label:'Close the tab, deal with it later', deltas:{mood:+2}, drivers:{workload:2}, arche:'protector', setFlag:'inbox_ignored' }
     ]
   },
   {
@@ -83,7 +83,7 @@ const POOL = [
     title:'A coworker needs help',
     body:'"Got two minutes?" It is rarely two minutes.',
     choices:[
-      { label:'Help immediately', deltas:{focus:-12, mood:+4}, drivers:{workload:8}, arche:'busy' },
+      { label:'Help immediately', deltas:{focus:-12, mood:+3}, drivers:{workload:8}, arche:'busy' },
       { label:'Schedule it for later today', deltas:{focus:-2}, drivers:{workload:2}, arche:'planner' },
       { label:'Decline, protect your focus block', deltas:{mood:-4, focus:+4}, drivers:{workload:0}, arche:'protector' }
     ]
@@ -131,7 +131,7 @@ const POOL = [
     title:'A rare open 45 minutes',
     body:'Nothing is scheduled. Your focus block from three weeks ago finally arrived.',
     choices:[
-      { label:'Protect it, close every tab', deltas:{focus:+14, mood:+4}, drivers:{recovery:10}, arche:'protector' },
+      { label:'Protect it, close every tab', deltas:{focus:+7, mood:+2}, drivers:{recovery:10}, arche:'protector' },
       { label:'Use it to clear small tasks instead', deltas:{focus:-4}, drivers:{workload:4}, arche:'busy' }
     ]
   },
@@ -140,7 +140,7 @@ const POOL = [
     title:'You notice your shoulders are up by your ears',
     body:'A small, physical signal that you have been pushing for a while.',
     choices:[
-      { label:'Take five minutes away from the screen', deltas:{energy:+10, mood:+8}, drivers:{recovery:10}, arche:'recovery' },
+      { label:'Take five minutes away from the screen', deltas:{energy:+5, mood:+3}, drivers:{recovery:10}, arche:'recovery' },
       { label:'Push through it', deltas:{energy:-8, mood:-4}, drivers:{workload:4}, arche:'firefighter' }
     ]
   },
@@ -150,7 +150,7 @@ const POOL = [
     body:'Your stomach has been reminding you for a while now.',
     choices:[
       { label:'Skip it, keep working', deltas:{energy:-14, mood:-8}, drivers:{workload:6}, arche:'busy' },
-      { label:'Take a proper break away from your desk', deltas:{energy:+16, mood:+12, focus:+6}, drivers:{recovery:16}, arche:'recovery' },
+      { label:'Take a proper break away from your desk', deltas:{energy:+7, mood:+5, focus:+3}, drivers:{recovery:16}, arche:'recovery' },
       { label:'Eat at your desk while working', deltas:{energy:+2, focus:-6}, drivers:{workload:4}, arche:'firefighter' }
     ],
     mandatory: true
@@ -188,8 +188,8 @@ const POOL = [
     title:'"Great work on that last one."',
     body:'A short, genuine message. Easy to miss if you are moving fast.',
     choices:[
-      { label:'Pause and actually take it in', deltas:{mood:+12}, drivers:{recovery:8}, arche:'recovery' },
-      { label:'Say thanks and move straight on', deltas:{mood:+3}, drivers:{recovery:0}, arche:'busy' }
+      { label:'Pause and actually take it in', deltas:{mood:+5}, drivers:{recovery:8}, arche:'recovery' },
+      { label:'Say thanks and move straight on', deltas:{mood:+2}, drivers:{recovery:0}, arche:'busy' }
     ]
   },
   {
@@ -206,7 +206,7 @@ const POOL = [
     title:'The office is quiet for a second',
     body:'Nobody is asking you for anything, for once.',
     choices:[
-      { label:'Get up, get water or coffee, stretch', deltas:{energy:+8, mood:+6}, drivers:{recovery:8}, arche:'recovery' },
+      { label:'Get up, get water or coffee, stretch', deltas:{energy:+4, mood:+3}, drivers:{recovery:8}, arche:'recovery' },
       { label:'Use the gap to clear more inbox', deltas:{focus:-6}, drivers:{workload:6}, arche:'busy' }
     ]
   },
@@ -242,7 +242,7 @@ const POOL = [
     title:'"Want to grab a quick walk?"',
     body:'A coworker heading out for ten minutes, asking if you want in.',
     choices:[
-      { label:'Go — step away from the desk', deltas:{energy:+10, mood:+8, focus:+4}, drivers:{recovery:10}, arche:'recovery' },
+      { label:'Go — step away from the desk', deltas:{energy:+4, mood:+3, focus:+2}, drivers:{recovery:10}, arche:'recovery' },
       { label:'Stay, there is too much to do', deltas:{mood:-4}, drivers:{workload:2}, arche:'busy' }
     ]
   }
@@ -255,7 +255,7 @@ const FINALE = {
   choices:[
     { label:'Push through and finish it properly', deltas:{energy:-16, focus:-14, mood:-6}, drivers:{workload:14}, arche:'firefighter' },
     { label:'Do a fast, imperfect version and stop', deltas:{energy:-6, focus:-6, mood:-2}, drivers:{workload:8}, arche:'planner' },
-    { label:'Explain you will finish it first thing tomorrow', deltas:{mood:+4, energy:-2}, drivers:{workload:2}, arche:'protector' }
+    { label:'Explain you will finish it first thing tomorrow', deltas:{mood:+3, energy:-3}, drivers:{workload:2}, arche:'protector' }
   ],
   mandatory: true
 };
@@ -340,11 +340,17 @@ function buildQueue(){
    RUN THE DAY — timer loop
    ============================================================ */
 const REAL_DURATION_MS = 5 * 60 * 1000; // ~5 minutes of real time
-let simTotalRange, tickStart;
+let simTotalRange, tickStart, lastSimTime;
+
+// Passive drain across the whole day, independent of choices — this is the
+// baseline cost of just being at work. Total points lost over the full
+// 9:00-5:30 span if no event ever touched a resource.
+const PASSIVE_DECAY_PER_DAY = { energy: 58, focus: 62, mood: 56 };
 
 function startDay(){
   simTotalRange = state.dayEnd - state.dayStart;
   tickStart = performance.now();
+  lastSimTime = state.dayStart;
   state.playing = true;
   logTimeline(state.dayStart, 'You sit down at your desk. The day begins.');
   scheduleNextEvent();
@@ -356,6 +362,18 @@ function tick(now){
   const elapsed = now - tickStart;
   const frac = Math.min(elapsed / REAL_DURATION_MS, 1);
   state.time = state.dayStart + frac * simTotalRange;
+
+  // passive drain scaled to however much sim-time just passed
+  const deltaMin = state.time - lastSimTime;
+  if (deltaMin > 0){
+    Object.keys(PASSIVE_DECAY_PER_DAY).forEach(r => {
+      const drain = (deltaMin / simTotalRange) * PASSIVE_DECAY_PER_DAY[r];
+      state.resources[r] = clamp(state.resources[r] - drain);
+    });
+    renderMeters();
+  }
+  lastSimTime = state.time;
+
   renderClock();
 
   // check for a due event
