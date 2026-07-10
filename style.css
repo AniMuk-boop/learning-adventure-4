@@ -453,12 +453,10 @@ button:focus-visible, .option:focus-visible{ outline: 2px solid var(--accent); o
    END SCREEN
    ============================================================ */
 #screen-end{
-  display: flex;
   flex-direction: column;
   align-items: center;
   padding: 60px 20px 100px;
 }
-#screen-end.active{ display: flex; }
 .end-wrap{ max-width: 620px; width: 100%; text-align: center; margin: 0 auto; }
 .end-title{
   font-family: var(--font-display);
