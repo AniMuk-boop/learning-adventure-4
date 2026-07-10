@@ -34,11 +34,11 @@
 *{ box-sizing: border-box; margin:0; padding:0; }
 
 html, body{
-  height: 100%;
+  min-height: 100%;
   background: radial-gradient(ellipse 120% 80% at 50% -10%, #171C2C 0%, var(--bg) 55%);
   color: var(--text);
   font-family: var(--font-body);
-  overflow: hidden;
+  overflow-x: hidden;
 }
 
 @media (prefers-reduced-motion: reduce){
@@ -53,8 +53,9 @@ button:focus-visible, .option:focus-visible{ outline: 2px solid var(--accent); o
    ============================================================ */
 .screen{
   display:none;
-  height: 100vh;
-  width: 100vw;
+  min-height: 100vh;
+  min-height: 100dvh;
+  width: 100%;
   animation: fadeIn 0.5s var(--ease);
 }
 .screen.active{ display: flex; }
@@ -455,9 +456,6 @@ button:focus-visible, .option:focus-visible{ outline: 2px solid var(--accent); o
   display: flex;
   flex-direction: column;
   align-items: center;
-  overflow-y: auto;
-  overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
   padding: 60px 20px 100px;
 }
 #screen-end.active{ display: flex; }
